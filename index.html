@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EEF0F3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Podcasts">
+<title>Mine podcasts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --papir: #FFFFFF;
+    --blæk: #13171D;
+    --dæmpet: #545C69;
+    --linje: #D3D8DF;
+    --baggrund: #EEF0F3;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    /* safe-area holder indholdet fri af iPadens afrundede hjørner og hjemindikatoren */
+    padding: 0 max(24px, env(safe-area-inset-left)) calc(40px + env(safe-area-inset-bottom));
+    background: var(--baggrund);
+    color: var(--blæk);
+    font-family: "Atkinson Hyperlegible", "Verdana", "Helvetica Neue", system-ui, sans-serif;
+    font-size: 19px;
+    line-height: 1.5;
+  }
+
+  .indhold { max-width: 1180px; margin: 0 auto; }
+
+  header { padding: 40px 0 22px; }
+
+  h1 {
+    font-size: 46px;
+    line-height: 1.1;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+
+  .vejledning {
+    margin: 0;
+    max-width: 34em;
+    color: var(--dæmpet);
+    font-size: 21px;
+  }
+
+  /* Podcastlisten til venstre, anbefalingerne i en spalte til højre */
+  .opdeling {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .liste {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Hele kortet er ét stort trykfelt */
+  .kort {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 22px;
+    padding: 14px 20px 14px 16px;
+    background: var(--papir);
+    border: 3px solid var(--linje);
+    border-left: 14px solid var(--farve);
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    /* Fjerner iOS' grå blink og forsinkelsen på dobbelttryk */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Trykket bekræftes visuelt, så det er tydeligt hvilket kort der blev ramt */
+  .kort:active {
+    background: #F1F4F8;
+    border-color: var(--farve);
+    transform: scale(0.985);
+  }
+
+  .kort:focus-visible {
+    outline: 5px solid var(--blæk);
+    outline-offset: 4px;
+  }
+
+  /* Holder nummeret oven på logoets hjørne, så kortet kun har én firkant */
+  .mærke { position: relative; display: block; }
+
+  .logo, .logo-fald {
+    display: block;
+    width: var(--logo-størrelse, 116px);
+    height: var(--logo-størrelse, 116px);
+    border-radius: 12px;
+    object-fit: cover;
+    background: #E7EAEF;
+  }
+
+  /* Træder i stedet for logoet, når rækken i arket ikke har et billede */
+  .logo-fald {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--farve-svag);
+    color: var(--farve);
+  }
+
+  .afspil {
+    width: 44%;
+    height: 44%;
+  }
+
+  /* Nummeret er nøglen til samtalen: "Jeg vil gerne høre nummer 3" */
+  .nummer {
+    position: absolute;
+    top: -12px;
+    left: -12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    background: var(--farve);
+    color: var(--farve-tekst, #fff);
+    border: 4px solid var(--papir);
+    border-radius: 50%;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .titel {
+    font-size: var(--titel-størrelse, 30px);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  /* Vises på kort hvor rækken i arket mangler et link */
+  .mangler-link {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 2px 10px;
+    border: 2px dashed var(--dæmpet);
+    border-radius: 999px;
+    color: var(--dæmpet);
+    font-size: 15px;
+    font-weight: 400;
+  }
+
+  /* Få podcasts: store kort i én spalte. Mange: mindre kort i flere spalter */
+  .liste.antal-få { --logo-størrelse: 150px; --titel-størrelse: 36px; }
+  .liste.antal-mange { --logo-størrelse: 92px; --titel-størrelse: 24px; }
+
+  /* Anbefalinger er enkelte afsnit og får bogstaver, så de ikke forveksles med numrene */
+  .anbefalinger {
+    background: var(--papir);
+    border: 3px solid var(--linje);
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  .anbefalinger h2 { font-size: 26px; margin: 0 0 14px; }
+
+  .anbefalinger ul {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .afsnit {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    align-items: start;
+    gap: 14px;
+    padding: 12px;
+    border: 3px solid var(--linje);
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .afsnit:active { background: #F1F4F8; }
+
+  .afsnit:focus-visible {
+    outline: 5px solid var(--blæk);
+    outline-offset: 4px;
+  }
+
+  .bogstav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    background: var(--blæk);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .afsnit-titel {
+    display: block;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .afsnit-serie {
+    display: block;
+    margin-top: 2px;
+    color: var(--dæmpet);
+    font-size: 16px;
+  }
+
+  .besked {
+    margin: 0;
+    color: var(--dæmpet);
+    font-size: 17px;
+  }
+
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin-top: 32px;
+    padding-top: 18px;
+    border-top: 3px solid var(--linje);
+    color: var(--dæmpet);
+    font-size: 15px;
+  }
+
+  .opdater {
+    font: inherit;
+    font-size: 15px;
+    color: var(--dæmpet);
+    background: transparent;
+    border: 2px solid var(--linje);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .opdater:active { background: var(--papir); }
+
+  .fejl { color: #A4331B; }
+
+  /* iPad på højkant og derover: anbefalingerne rykker ud i sidespalten */
+  @media (min-width: 800px) {
+    .opdeling { grid-template-columns: 1fr 320px; }
+    .anbefalinger { position: sticky; top: 24px; }
+    /* Uden anbefalinger fylder podcastlisten hele bredden */
+    .opdeling.uden-sidespalte { grid-template-columns: 1fr; }
+  }
+
+  /* Brede skærme: antallet af rækker afgør hvor mange spalter listen deles i */
+  @media (min-width: 1120px) {
+    .liste.antal-mellem { grid-template-columns: 1fr 1fr; }
+    .liste.antal-mange { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  @media (min-width: 800px) and (max-width: 1119px) {
+    .liste.antal-mange { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* iPad på tværs: lidt lavere kort, så mere af listen er synlig på én skærm */
+  @media (min-width: 1000px) and (max-height: 850px) {
+    header { padding: 26px 0 18px; }
+    h1 { font-size: 40px; }
+    .liste { --logo-størrelse: 96px; --titel-størrelse: 26px; }
+    .liste.antal-få { --logo-størrelse: 130px; --titel-størrelse: 32px; }
+    .liste.antal-mange { --logo-størrelse: 84px; --titel-størrelse: 22px; }
+  }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 34px; }
+    .kort { gap: 16px; padding: 12px; }
+    .liste, .liste.antal-få, .liste.antal-mange { --logo-størrelse: 84px; --titel-størrelse: 23px; }
+    .nummer { width: 46px; height: 46px; font-size: 22px; }
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; font-size: 13pt; }
+    header { padding-top: 0; }
+    .kort, .afsnit { break-inside: avoid; border-color: #999; }
+    .anbefalinger { position: static; }
+    .status { display: none; }
+  }
+</style>
+</head>
+
+<body>
+<div class="indhold">
+
+  <header>
+    <h1>Gretes podcasts</h1>
+    <p class="vejledning"></p>
+  </header>
+
+  <div class="opdeling" id="opdeling">
+    <div>
+      <ul class="liste" id="liste"></ul>
+      <p class="besked" id="liste-besked">Henter listen …</p>
+    </div>
+
+    <section class="anbefalinger" id="anbefalinger" aria-labelledby="anbefalinger-titel">
+      <h2 id="anbefalinger-titel">Mine anbefalinger</h2>
+      <ul id="anbefalinger-liste"></ul>
+      <p class="besked" id="anbefalinger-besked" hidden>Der er ingen anbefalinger på listen endnu.</p>
+    </section>
+  </div>
+
+  <p class="status">
+    <span id="status-tekst"></span>
+    <button class="opdater" id="opdater">Hent listen igen</button>
+  </p>
+
+</div>
+
+<script>
+/* ---------------------------------------------------------------------
+   OPSÆTNING
+   Indholdet hentes fra to faneblade i et Google Sheet, der er udgivet med
+   "Filer → Del → Udgiv på nettet" som CSV. Hvert faneblad får sin egen
+   adresse — vælg fanebladet i rullemenuen og formatet "Kommasepareret".
+
+   Faneblad 1 "Podcasts" med kolonnerne:   titel, url, billede, farve
+   Faneblad 2 "Anbefalinger" med kolonnerne: titel, serie, url
+
+   Kun titel og url er nødvendige. Numre og bogstaver sættes automatisk
+   efter rækkefølgen i arket, og farver tildeles fra paletten nedenfor,
+   hvis farve-kolonnen står tom.
+   --------------------------------------------------------------------- */
+const PODCAST_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQkxScNFj-ulh4sz599lqbLH_ORqQcb5AiP7FVTVDrSH5clbCaRoo9anOzpYQSe6dFFWOAnNuNiaBCb/pub?gid=0&single=true&output=csv";
+const ANBEFALING_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQkxScNFj-ulh4sz599lqbLH_ORqQcb5AiP7FVTVDrSH5clbCaRoo9anOzpYQSe6dFFWOAnNuNiaBCb/pub?gid=604685259&single=true&output=csv";
+
+/* Farverne tildeles rækkerne på skift, når arket ikke selv angiver en farve.
+   Rækkefølgen sætter de mest forskellige farver ved siden af hinanden, og alle
+   otte har et enkelt dansk navn, en hjælper kan bruge uden at kende sproget godt */
+const PALET = [
+  "#4F7CA6", // blå
+  "#B5544C", // rød
+  "#5C8A5E", // grøn
+  "#D3B45C", // gul
+  "#8A6DA6", // lilla
+  "#CE8A50", // orange
+  "#8B6A50", // brun
+  "#C98BA6"  // pink
+];
+
+/* Bruges indtil arket er sat op, og hvis hentningen fejler */
+const STANDARD_PODCASTS = [
+  { titel: "Genstart", url: "https://www.dr.dk/lyd/special-radio/genstart-2642056922000", billede: "billeder/genstart.jpg", farve: "" },
+  { titel: "Genstart Dox", url: "https://www.dr.dk/lyd/special-radio/genstart-dox-5314646134000", billede: "billeder/genstart-dox.jpg", farve: "" },
+  { titel: "Brinkmanns briks", url: "https://www.dr.dk/lyd/p1/brinkmanns-briks-2144855835000", billede: "billeder/brinkmanns-briks.jpg", farve: "" },
+  { titel: "Klog på Sprog", url: "https://www.dr.dk/lyd/p1/klog-paa-sprog-1624041693000", billede: "billeder/klog-paa-sprog.jpg", farve: "" },
+  { titel: "Kampen om historien", url: "https://www.dr.dk/lyd/p1/kampen-om-historien-3166339029000", billede: "billeder/kampen-om-historien.jpg", farve: "" }
+];
+
+const STANDARD_ANBEFALINGER = [
+  {
+    titel: "Mogens Lykketoft og Per Stig Møller ser tilbage på 9/11",
+    serie: "Kampen om historien",
+    url: "https://www.dr.dk/lyd/p1/kampen-om-historien/kampen-om-historien-2026/mogens-lykketoft-og-per-stig-moeller-ser-tilbage-paa-9-11-11032615372"
+  }
+];
+
+/* ---------------------------------------------------------------------
+   INDLÆSNING AF ARKET
+   --------------------------------------------------------------------- */
+
+/* Læser CSV tegn for tegn, så felter i anførselstegn må indeholde komma
+   og linjeskift — sådan som Google Sheets skriver dem */
+function parseCsv(tekst) {
+  const rækker = [];
+  let felt = "", række = [], iCitat = false;
+
+  for (let i = 0; i < tekst.length; i++) {
+    const tegn = tekst[i], næste = tekst[i + 1];
+    if (iCitat) {
+      if (tegn === '"' && næste === '"') { felt += '"'; i++; }
+      else if (tegn === '"') { iCitat = false; }
+      else { felt += tegn; }
+    } else if (tegn === '"') {
+      iCitat = true;
+    } else if (tegn === ",") {
+      række.push(felt); felt = "";
+    } else if (tegn === "\n" || tegn === "\r") {
+      if (tegn === "\r" && næste === "\n") i++;
+      række.push(felt); felt = "";
+      if (række.some((f) => f.trim() !== "")) rækker.push(række);
+      række = [];
+    } else {
+      felt += tegn;
+    }
+  }
+  if (felt !== "" || række.length > 0) { række.push(felt); rækker.push(række); }
+  if (rækker.length === 0) return [];
+
+  /* Første række er kolonneoverskrifter og bliver til nøgler i små bogstaver */
+  const overskrifter = rækker[0].map((h) => h.trim().toLowerCase());
+  return rækker.slice(1).map((r) => {
+    const objekt = {};
+    overskrifter.forEach((h, nr) => { objekt[h] = (r[nr] || "").trim(); });
+    return objekt;
+  });
+}
+
+/* Lægger et tidsstempel på adressen, så iPad'en ikke viser en gemt kopi af arket */
+async function hentCsv(adresse) {
+  const skilletegn = adresse.includes("?") ? "&" : "?";
+  const svar = await fetch(adresse + skilletegn + "_=" + Date.now());
+  if (!svar.ok) throw new Error("HTTP " + svar.status);
+  return parseCsv(await svar.text());
+}
+
+/* Kun almindelige web-adresser og lokale billedfiler slipper igennem,
+   så en tilfældig tekst i arket ikke bliver til et aktivt link */
+function trygUrl(værdi) {
+  const tekst = (værdi || "").trim();
+  if (/^https?:\/\//i.test(tekst)) return tekst;
+  if (/^[\w./-]+\.(jpg|jpeg|png|webp|gif|avif)$/i.test(tekst)) return tekst;
+  return "";
+}
+
+/* ---------------------------------------------------------------------
+   NUMRE OG BOGSTAVER
+   --------------------------------------------------------------------- */
+
+/* Række 1 bliver A, række 27 bliver AA og så videre, som kolonnenavne i et regneark */
+function bogstavFraRække(nr) {
+  let tal = nr, tekst = "";
+  while (tal > 0) {
+    const rest = (tal - 1) % 26;
+    tekst = String.fromCharCode(65 + rest) + tekst;
+    tal = Math.floor((tal - 1) / 26);
+  }
+  return tekst;
+}
+
+/* ---------------------------------------------------------------------
+   OPBYGNING AF SIDEN
+   --------------------------------------------------------------------- */
+
+/* Læser en farve som "#1a2b3c" og giver de tre farvekanaler tilbage */
+function tilKanaler(hex) {
+  const rens = hex.replace("#", "").trim();
+  const fuld = rens.length === 3 ? rens.split("").map((t) => t + t).join("") : rens;
+  return [0, 2, 4].map((start) => parseInt(fuld.slice(start, start + 2), 16) || 0);
+}
+
+/* Lægger farven halvgennemsigtigt hen over den hvide baggrund, så udtrykket
+   bliver støvet. Styrke 1 er den fulde farve, 0 er helt hvid */
+function medHvid(hex, styrke) {
+  const [r, g, b] = tilKanaler(hex);
+  const bland = (kanal) => Math.round(kanal * styrke + 255 * (1 - styrke));
+  return "rgb(" + bland(r) + ", " + bland(g) + ", " + bland(b) + ")";
+}
+
+/* Lyse farver som gul får mørk tekst, mørke farver får hvid, så nummeret
+   kan læses uanset hvilken farve arket peger på */
+function tekstfarve(hex, styrke) {
+  const [r, g, b] = tilKanaler(hex).map((kanal) => kanal * styrke + 255 * (1 - styrke));
+  const lysstyrke = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lysstyrke > 0.62 ? "#13171D" : "#FFFFFF";
+}
+
+/* Antallet af rækker afgør kortstørrelse og antal spalter */
+function tilpasListeTilAntal(liste, antal) {
+  liste.classList.remove("antal-få", "antal-mellem", "antal-mange");
+  if (antal <= 4) liste.classList.add("antal-få");
+  else if (antal <= 8) liste.classList.add("antal-mellem");
+  else liste.classList.add("antal-mange");
+}
+
+function visPodcasts(podcasts) {
+  const liste = document.getElementById("liste");
+  const besked = document.getElementById("liste-besked");
+  liste.innerHTML = "";
+
+  if (podcasts.length === 0) {
+    besked.hidden = false;
+    besked.textContent = "Der er ingen podcasts i arket endnu.";
+    return;
+  }
+  besked.hidden = true;
+  tilpasListeTilAntal(liste, podcasts.length);
+
+  podcasts.forEach((podcast, indeks) => {
+    const nummer = indeks + 1;
+    const url = trygUrl(podcast.url);
+    const billede = trygUrl(podcast.billede);
+    const farve = (podcast.farve || "").trim() || PALET[indeks % PALET.length];
+
+    const kort = document.createElement("a");
+    kort.className = "kort";
+    kort.style.setProperty("--farve", medHvid(farve, 0.88));
+    kort.style.setProperty("--farve-svag", medHvid(farve, 0.22));
+    kort.style.setProperty("--farve-tekst", tekstfarve(farve, 0.88));
+    kort.href = url || "#";
+    kort.setAttribute("aria-label", "Nummer " + nummer + ": " + podcast.titel);
+
+    /* DR LYD åbnes i en ny fane, så listen bliver liggende bagved */
+    if (url) { kort.target = "_blank"; kort.rel = "noopener"; }
+
+    const mærke = document.createElement("span");
+    mærke.className = "mærke";
+
+    if (billede) {
+      const logo = document.createElement("img");
+      logo.className = "logo";
+      logo.src = billede;
+      logo.alt = "";
+      logo.loading = "lazy";
+      /* Et billede der ikke kan hentes, bliver til den farvede flade,
+         så kortet beholder sin form og linket stadig virker */
+      logo.addEventListener("error", () => logo.replaceWith(farvetFlade()));
+      mærke.appendChild(logo);
+    } else {
+      mærke.appendChild(farvetFlade());
+    }
+
+    const nummerMærke = document.createElement("span");
+    nummerMærke.className = "nummer";
+    nummerMærke.setAttribute("aria-hidden", "true");
+    nummerMærke.textContent = nummer;
+    mærke.appendChild(nummerMærke);
+
+    const titel = document.createElement("span");
+    titel.className = "titel";
+    titel.textContent = podcast.titel;
+
+    if (!url) {
+      const mangler = document.createElement("span");
+      mangler.className = "mangler-link";
+      mangler.textContent = "Mangler link i arket";
+      titel.appendChild(mangler);
+    }
+
+    kort.append(mærke, titel);
+
+    const punkt = document.createElement("li");
+    punkt.appendChild(kort);
+    liste.appendChild(punkt);
+  });
+}
+
+/* Viser en afspilningstrekant på kortets farve, når rækken ikke har et billede.
+   Trekanten er valgt frem for et bogstav, så den ikke forveksles med
+   bogstaverne på anbefalingerne */
+function farvetFlade() {
+  const flade = document.createElement("span");
+  flade.className = "logo-fald";
+  flade.setAttribute("aria-hidden", "true");
+  flade.innerHTML =
+    '<svg class="afspil" viewBox="0 0 64 64" focusable="false">' +
+      '<path d="M20 12 L54 32 L20 52 Z" fill="currentColor" stroke="currentColor" ' +
+      'stroke-width="9" stroke-linejoin="round"/>' +
+    '</svg>';
+  return flade;
+}
+
+function visAnbefalinger(anbefalinger) {
+  const liste = document.getElementById("anbefalinger-liste");
+  const besked = document.getElementById("anbefalinger-besked");
+  const opdeling = document.getElementById("opdeling");
+  const sektion = document.getElementById("anbefalinger");
+  liste.innerHTML = "";
+
+  /* Uden anbefalinger forsvinder sidespalten, og podcastlisten breder sig ud */
+  const tom = anbefalinger.length === 0;
+  sektion.hidden = tom;
+  opdeling.classList.toggle("uden-sidespalte", tom);
+  besked.hidden = !tom;
+  if (tom) return;
+
+  anbefalinger.forEach((anbefaling, indeks) => {
+    const bogstav = bogstavFraRække(indeks + 1);
+    const url = trygUrl(anbefaling.url);
+
+    const kort = document.createElement("a");
+    kort.className = "afsnit";
+    kort.href = url || "#";
+    kort.setAttribute("aria-label", "Anbefaling " + bogstav + ": " + anbefaling.titel +
+      (anbefaling.serie ? ", fra " + anbefaling.serie : ""));
+    if (url) { kort.target = "_blank"; kort.rel = "noopener"; }
+
+    const mærke = document.createElement("span");
+    mærke.className = "bogstav";
+    mærke.setAttribute("aria-hidden", "true");
+    mærke.textContent = bogstav;
+
+    const tekst = document.createElement("span");
+    const titel = document.createElement("span");
+    titel.className = "afsnit-titel";
+    titel.textContent = anbefaling.titel;
+    tekst.appendChild(titel);
+
+    if (anbefaling.serie) {
+      const serie = document.createElement("span");
+      serie.className = "afsnit-serie";
+      serie.textContent = anbefaling.serie;
+      tekst.appendChild(serie);
+    }
+
+    kort.append(mærke, tekst);
+
+    const punkt = document.createElement("li");
+    punkt.appendChild(kort);
+    liste.appendChild(punkt);
+  });
+}
+
+/* ---------------------------------------------------------------------
+   START
+   --------------------------------------------------------------------- */
+
+function visStatus(tekst, erFejl) {
+  const felt = document.getElementById("status-tekst");
+  felt.textContent = tekst;
+  felt.className = erFejl ? "fejl" : "";
+}
+
+async function indlæsAlt() {
+  const knap = document.getElementById("opdater");
+  knap.disabled = true;
+
+  /* Uden adresser i opsætningen kører siden videre på standardlisterne */
+  if (!PODCAST_CSV_URL && !ANBEFALING_CSV_URL) {
+    visPodcasts(STANDARD_PODCASTS);
+    visAnbefalinger(STANDARD_ANBEFALINGER);
+    visStatus("Viser den indbyggede liste. Indsæt adresserne på regnearket i opsætningen øverst i filen.", false);
+    knap.disabled = false;
+    return;
+  }
+
+  visStatus("Opdaterer …", false);
+  const fejl = [];
+
+  try {
+    const rækker = PODCAST_CSV_URL ? await hentCsv(PODCAST_CSV_URL) : [];
+    visPodcasts(PODCAST_CSV_URL ? rækker.filter((r) => r.titel) : STANDARD_PODCASTS);
+  } catch (problem) {
+    visPodcasts(STANDARD_PODCASTS);
+    fejl.push("podcasts (" + problem.message + ")");
+  }
+
+  try {
+    const rækker = ANBEFALING_CSV_URL ? await hentCsv(ANBEFALING_CSV_URL) : [];
+    visAnbefalinger(ANBEFALING_CSV_URL ? rækker.filter((r) => r.titel) : STANDARD_ANBEFALINGER);
+  } catch (problem) {
+    visAnbefalinger(STANDARD_ANBEFALINGER);
+    fejl.push("anbefalinger (" + problem.message + ")");
+  }
+
+  const tidspunkt = new Date().toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+  if (fejl.length) {
+    visStatus("Kunne ikke hente " + fejl.join(" og ") + ". Viser den senest kendte liste.", true);
+  } else {
+    visStatus("Opdateret " + tidspunkt + ".", false);
+  }
+  knap.disabled = false;
+}
+
+document.getElementById("opdater").addEventListener("click", indlæsAlt);
+
+indlæsAlt();
+</script>
+</body>
+</html>
